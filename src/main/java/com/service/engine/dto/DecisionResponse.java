@@ -15,12 +15,45 @@ public class DecisionResponse {
         REVIEW
     }
 
-    public static class TriggeredRule{
+    public static class TriggeredRule {
         private String ruleId;
         private String ruleName;
         private boolean matched;
         private String reason;
+
+        public String getRuleId() {
+            return ruleId;
+        }
+
+        public void setRuleId(String ruleId) {
+            this.ruleId = ruleId;
+        }
+
+        public String getRuleName() {
+            return ruleName;
+        }
+
+        public void setRuleName(String ruleName) {
+            this.ruleName = ruleName;
+        }
+
+        public boolean isMatched() {
+            return matched;
+        }
+
+        public void setMatched(boolean matched) {
+            this.matched = matched;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public void setReason(String reason) {
+            this.reason = reason;
+        }
     }
+
 
     public Decision getDecision() {
         return decision;
