@@ -10,6 +10,7 @@
     <name>Smart Activity Tracker</name>
     <description>Backend service for tracking and analytics of user events</description>
 
+    <!-- Spring Boot parent -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
@@ -88,7 +89,28 @@
             <version>5.20.0</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Actuator endpoints -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Export метрик -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- Swagger -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
     </dependencies>
+
     <build>
         <plugins>
 
