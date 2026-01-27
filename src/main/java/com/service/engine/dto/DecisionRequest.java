@@ -1,11 +1,16 @@
 package com.service.engine.dto;
 
+import jakarta.validation.constraints.*;
+
 import java.util.Map;
 
 public class DecisionRequest {
 
+    @NotBlank
     private String decisionType;
+    @NotBlank
     private String subjectId;
+    @NotNull
     private Map<String, Object> attributes;
 
     public String getDecisionType() {

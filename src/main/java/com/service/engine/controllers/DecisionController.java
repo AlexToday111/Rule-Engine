@@ -3,6 +3,7 @@ package com.service.engine.controllers;
 import com.service.engine.dto.DecisionRequest;
 import com.service.engine.dto.DecisionResponse;
 import com.service.engine.service.DecisionService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,7 +17,7 @@ public class DecisionController {
     }
 
     @PostMapping("/evaluate")
-    public DecisionResponse evaluate(@RequestBody DecisionRequest request) {
+    public DecisionResponse evaluate(@Valid @RequestBody DecisionRequest request) {
         return decisionService.evaluate(request);
     }
 }

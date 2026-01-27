@@ -1,6 +1,8 @@
 package com.service.engine.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "rules")
@@ -10,21 +12,26 @@ public class Rule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank
     @Column(name = "decision_type", nullable = false)
     private String decisionType;
 
+    @NotNull
     @Column(nullable = false)
     private Integer priority;
 
     @Column(nullable = false)
     private boolean enabled;
 
+    @NotBlank
     @Column(nullable = false, columnDefinition = "TEXT")
     private String condition;
 
+    @NotBlank
     @Column(nullable = false, columnDefinition = "TEXT")
     private String effect;
 
+    @NotBlank
     @Column(nullable = false)
     private String description;
 
