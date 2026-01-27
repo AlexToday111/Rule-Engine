@@ -2,6 +2,7 @@ package com.service.engine.controllers;
 
 import com.service.engine.model.Rule;
 import com.service.engine.repository.RuleRepository;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,13 +26,13 @@ public class RulesController {
     }
 
     @PostMapping
-    public Rule create(@RequestBody Rule rule) {
-        rule.setId(null); // чтобы случайно не перезаписать
+    public Rule create(@Valid @RequestBody Rule rule) {
+        rule.setId(null);
         return ruleRepository.save(rule);
     }
 
     @PutMapping("/{id}")
-    public Rule update(@PathVariable Long id, @RequestBody Rule incoming) {
+    public Rule update(@Valid @PathVariable Long id, @RequestBody Rule incoming) {
         Rule existing = ruleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Rule not found: " + id));
 
