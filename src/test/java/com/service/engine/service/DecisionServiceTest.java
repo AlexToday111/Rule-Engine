@@ -1,10 +1,9 @@
-package com.service.engine;
+package com.service.engine.service;
 
 import com.service.engine.dto.DecisionRequest;
 import com.service.engine.dto.DecisionResponse;
 import com.service.engine.model.Rule;
 import com.service.engine.repository.RuleRepository;
-import com.service.engine.service.DecisionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
