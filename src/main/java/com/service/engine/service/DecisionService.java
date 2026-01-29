@@ -4,18 +4,31 @@ import com.service.engine.dto.DecisionRequest;
 import com.service.engine.dto.DecisionResponse;
 import com.service.engine.model.Rule;
 import com.service.engine.repository.RuleRepository;
+import org.springframework.stereotype.Service;
+
+
 
 import java.util.ArrayList;
 import java.util.List;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
+
+@Service
 public class DecisionService {
     private final RuleRepository ruleRepository;
+    private final MeterRegistry meterRegistry;
 
-    public DecisionService(RuleRepository ruleRepository) {
+    public DecisionService(RuleRepository ruleRepository, MeterRegistry meterRegistry) {
         this.ruleRepository = ruleRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     public DecisionResponse evaluate(DecisionRequest request) {
+
+        Timer.Sample sample = Timer.start(meterRegistry);
+
         long start = System.nanoTime();
 
         List<Rule> rules = ruleRepository.findByDecisionTypeAndEnabledTrueOrderByPriorityAsc(request.getDecisionType());
@@ -62,6 +75,16 @@ public class DecisionService {
 
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
         response.setExecutionTimeMs(elapsedMs);
+
+        sample.stop(Timer.builder("decision_execution_time")
+                .tag("type", request.getDecisionType())
+                .register(meterRegistry));
+
+        Counter.builder("decision_requests_total")
+                .tag("type", request.getDecisionType())
+                .tag("decision", response.getDecision().name())
+                .register(meterRegistry)
+                .increment();
 
         return response;
     }
