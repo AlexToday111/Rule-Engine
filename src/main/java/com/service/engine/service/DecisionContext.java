@@ -1,10 +1,12 @@
 package com.service.engine.service;
 
+import org.springframework.stereotype.Service;
 import org.springframework.validation.ObjectError;
 
 import java.math.BigDecimal;
 import java.util.Map;
 
+@Service
 public class DecisionContext {
     private final String subjectId;
     private final String decisionType;

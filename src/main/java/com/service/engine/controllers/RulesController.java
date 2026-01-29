@@ -2,6 +2,7 @@ package com.service.engine.controllers;
 
 import com.service.engine.model.Rule;
 import com.service.engine.repository.RuleRepository;
+import com.service.engine.service.DecisionService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,11 @@ import java.util.List;
 public class RulesController {
 
     private final RuleRepository ruleRepository;
+    private final DecisionService decisionService;
 
-    public RulesController(RuleRepository ruleRepository) {
+    public RulesController(RuleRepository ruleRepository, DecisionService decisionService) {
         this.ruleRepository = ruleRepository;
+        this.decisionService = decisionService;
     }
 
     @GetMapping
@@ -29,6 +32,11 @@ public class RulesController {
     public Rule create(@Valid @RequestBody Rule rule) {
         rule.setId(null);
         return ruleRepository.save(rule);
+    }
+
+    @PostMapping
+    public void evictCache() {
+        decisionService.evictCache();
     }
 
     @PutMapping("/{id}")

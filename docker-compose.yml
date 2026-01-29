@@ -3,7 +3,6 @@ version: "3.9"
 services:
   postgres:
     image: postgres:16
-    container_name: rule-engine-postgres
     environment:
       POSTGRES_DB: engine
       POSTGRES_USER: engine
@@ -15,7 +14,6 @@ services:
 
   app:
     build: .
-    container_name: rule-engine-app
     depends_on:
       - postgres
     ports:
@@ -26,7 +24,26 @@ services:
       SPRING_DATASOURCE_PASSWORD: engine
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       SPRING_FLYWAY_ENABLED: "true"
-    restart: unless-stopped
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,metrics,prometheus
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
 
 volumes:
   pg_data:
+  grafana_data:
