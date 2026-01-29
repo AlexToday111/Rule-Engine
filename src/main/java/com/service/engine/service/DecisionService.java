@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -17,76 +19,114 @@ import io.micrometer.core.instrument.Timer;
 
 @Service
 public class DecisionService {
+
     private final RuleRepository ruleRepository;
     private final MeterRegistry meterRegistry;
+
+    private final ConcurrentHashMap<String, CachedRules> rulesCache = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 30_000;
+
+    private record CachedRules(List<Rule> rules, long loadedAtMs) {}
 
     public DecisionService(RuleRepository ruleRepository, MeterRegistry meterRegistry) {
         this.ruleRepository = ruleRepository;
         this.meterRegistry = meterRegistry;
     }
 
-    public DecisionResponse evaluate(DecisionRequest request) {
+    public void evictCache() {
+        rulesCache.clear();
+    }
 
+    public DecisionResponse evaluate(DecisionRequest request) {
         Timer.Sample sample = Timer.start(meterRegistry);
 
-        long start = System.nanoTime();
+        DecisionResponse response = null;
+        try {
+            long start = System.nanoTime();
 
-        List<Rule> rules = ruleRepository.findByDecisionTypeAndEnabledTrueOrderByPriorityAsc(request.getDecisionType());
+            List<Rule> rules = loadRules(request.getDecisionType());
 
-        DecisionContext ctx = new DecisionContext(
-                request.getSubjectId(),
-                request.getDecisionType(),
-                request.getAttributes()
-        );
+            DecisionContext ctx = new DecisionContext(
+                    request.getSubjectId(),
+                    request.getDecisionType(),
+                    request.getAttributes()
+            );
 
-        DecisionResponse response = new DecisionResponse();
-        response.setDecision(DecisionResponse.Decision.ALLOW);
-        response.setScore(null);
+            response = new DecisionResponse();
+            response.setDecision(DecisionResponse.Decision.ALLOW);
+            response.setScore(null);
 
-        List<DecisionResponse.TriggeredRule> trace = new ArrayList<>();
+            List<DecisionResponse.TriggeredRule> trace = new ArrayList<>();
 
-        for (Rule rule : rules) {
-            boolean matched = matches(rule.getCondition(), ctx);
+            for (Rule rule : rules) {
+                boolean matched = matches(rule.getCondition(), ctx);
 
-            DecisionResponse.TriggeredRule tr = new DecisionResponse.TriggeredRule();
-            tr.setRuleId(String.valueOf(rule.getId()));
-            tr.setRuleName(rule.getDescription());
-            tr.setMatched(matched);
+                DecisionResponse.TriggeredRule tr = new DecisionResponse.TriggeredRule();
+                tr.setRuleId(String.valueOf(rule.getId()));
+                tr.setRuleName(rule.getDescription());
+                tr.setMatched(matched);
 
-            if (!matched) {
-                tr.setReason(null);
+                if (!matched) {
+                    tr.setReason(null);
+                    trace.add(tr);
+                    continue;
+                }
+
+                Effect effect = parseEffect(rule.getEffect());
+                tr.setReason(effect.reason);
+
                 trace.add(tr);
-                continue;
-            }
 
-            Effect effect = parseEffect(rule.getEffect());
-            tr.setReason(effect.reason);
-
-            trace.add(tr);
-
-            if (effect.decision != null) {
-                response.setDecision(effect.decision);
-                if (effect.decision == DecisionResponse.Decision.DENY) {
-                    break;
+                if (effect.decision != null) {
+                    response.setDecision(effect.decision);
+                    if (effect.decision == DecisionResponse.Decision.DENY) {
+                        break;
+                    }
                 }
             }
+
+            response.setTriggeredRules(trace);
+
+            long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+            response.setExecutionTimeMs(elapsedMs);
+
+            return response;
+
+        } finally {
+            sample.stop(Timer.builder("decision_execution_time")
+                    .tag("type", request.getDecisionType())
+                    .register(meterRegistry));
+
+            if (response != null && response.getDecision() != null) {
+                Counter.builder("decision_requests_total")
+                        .tag("type", request.getDecisionType())
+                        .tag("decision", response.getDecision().name())
+                        .register(meterRegistry)
+                        .increment();
+            }
         }
-        response.setTriggeredRules(trace);
+    }
 
-        long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-        response.setExecutionTimeMs(elapsedMs);
+    private List<Rule> loadRules(String decisionType) {
+        long now = System.currentTimeMillis();
+        CachedRules cached = rulesCache.get(decisionType);
 
-        sample.stop(Timer.builder("decision_execution_time")
-                .tag("type", request.getDecisionType())
-                .register(meterRegistry));
+        if (cached != null && (now - cached.loadedAtMs()) < CACHE_TTL_MS) {
+            Counter.builder("rules_cache_hit_total")
+                    .tag("decisionType", decisionType)
+                    .register(meterRegistry)
+                    .increment();
+            return cached.rules();
+        }
 
-        Counter.builder("decision_requests_total")
-                .tag("type", request.getDecisionType())
-                .tag("decision", response.getDecision().name())
+        Counter.builder("rules_cache_miss_total")
+                .tag("decisionType", decisionType)
                 .register(meterRegistry)
                 .increment();
 
-        return response;
+        List<Rule> fresh = ruleRepository.findByDecisionTypeAndEnabledTrueOrderByPriorityAsc(decisionType);
+        rulesCache.put(decisionType, new CachedRules(fresh, now));
+        return fresh;
     }
 
     private boolean matches(String condtion, DecisionContext ctx) {
