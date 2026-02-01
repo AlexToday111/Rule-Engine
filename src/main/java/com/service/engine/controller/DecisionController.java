@@ -1,4 +1,4 @@
-package com.service.engine.controllers;
+package com.service.engine.controller;
 
 import com.service.engine.dto.DecisionRequest;
 import com.service.engine.dto.DecisionResponse;
