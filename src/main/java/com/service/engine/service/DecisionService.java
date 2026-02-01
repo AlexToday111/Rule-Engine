@@ -3,6 +3,7 @@ package com.service.engine.service;
 import com.service.engine.cache.RuleCache;
 import com.service.engine.dto.DecisionRequest;
 import com.service.engine.dto.DecisionResponse;
+import com.service.engine.exception.ConditionSyntaxException;
 import com.service.engine.model.Rule;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -109,11 +110,11 @@ public class DecisionService {
     private boolean evalSingle(String expr, DecisionContext ctx) {
         String op = detectOp(expr);
         if (op == null) {
-            throw new IllegalArgumentException("Unsupported expression: " + expr);
+            throw new ConditionSyntaxException("Unsupported expression: " + expr);
         }
         String[] tokens = expr.split("\\Q" + op + "\\E", 2);
         if (tokens.length != 2) {
-            throw new IllegalArgumentException("Bad expression: " + expr);
+            throw new ConditionSyntaxException("Bad expression: " + expr);
         }
         String field = tokens[0].trim();
         String rawValue = tokens[1].trim();
@@ -131,7 +132,7 @@ public class DecisionService {
                 case ">=" -> l >= r;
                 case "<" -> l < r;
                 case "<=" -> l <= r;
-                default -> throw new IllegalArgumentException("Unsupported op: " + op);
+                default -> throw new ConditionSyntaxException("Unsupported op: " + op);
             };
         }
 
@@ -141,7 +142,7 @@ public class DecisionService {
         return switch (op) {
             case "==" -> safeEquals(ls, rs);
             case "!=" -> !safeEquals(ls, rs);
-            default -> throw new IllegalArgumentException("Operator '" + op + "' is only numeric in v1: " + expr);
+            default -> throw new ConditionSyntaxException("Operator '" + op + "' is only numeric in v1: " + expr);
         };
     }
 
@@ -159,7 +160,7 @@ public class DecisionService {
         if (v == null) return 0.0;
         if (v instanceof Number n) return n.doubleValue();
         if (v instanceof String s) return Double.parseDouble(s);
-        throw new IllegalArgumentException("Not a number + " + v);
+        throw new ConditionSyntaxException("Not a number + " + v);
     }
 
     private Object parseLiteral(String raw) {
