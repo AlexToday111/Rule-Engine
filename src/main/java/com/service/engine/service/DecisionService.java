@@ -1,40 +1,26 @@
 package com.service.engine.service;
 
+import com.service.engine.cache.RuleCache;
 import com.service.engine.dto.DecisionRequest;
 import com.service.engine.dto.DecisionResponse;
 import com.service.engine.model.Rule;
-import com.service.engine.repository.RuleRepository;
-import org.springframework.stereotype.Service;
-
-
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class DecisionService {
 
-    private final RuleRepository ruleRepository;
+    private final RuleCache ruleCache;
     private final MeterRegistry meterRegistry;
 
-    private final ConcurrentHashMap<String, CachedRules> rulesCache = new ConcurrentHashMap<>();
-    private static final long CACHE_TTL_MS = 30_000;
-
-    private record CachedRules(List<Rule> rules, long loadedAtMs) {}
-
-    public DecisionService(RuleRepository ruleRepository, MeterRegistry meterRegistry) {
-        this.ruleRepository = ruleRepository;
+    public DecisionService(RuleCache ruleCache, MeterRegistry meterRegistry) {
+        this.ruleCache = ruleCache;
         this.meterRegistry = meterRegistry;
-    }
-
-    public void evictCache() {
-        rulesCache.clear();
     }
 
     public DecisionResponse evaluate(DecisionRequest request) {
@@ -44,7 +30,7 @@ public class DecisionService {
         try {
             long start = System.nanoTime();
 
-            List<Rule> rules = loadRules(request.getDecisionType());
+            List<Rule> rules = ruleCache.getRules(request.getDecisionType());
 
             DecisionContext ctx = new DecisionContext(
                     request.getSubjectId(),
@@ -105,28 +91,6 @@ public class DecisionService {
                         .increment();
             }
         }
-    }
-
-    private List<Rule> loadRules(String decisionType) {
-        long now = System.currentTimeMillis();
-        CachedRules cached = rulesCache.get(decisionType);
-
-        if (cached != null && (now - cached.loadedAtMs()) < CACHE_TTL_MS) {
-            Counter.builder("rules_cache_hit_total")
-                    .tag("decisionType", decisionType)
-                    .register(meterRegistry)
-                    .increment();
-            return cached.rules();
-        }
-
-        Counter.builder("rules_cache_miss_total")
-                .tag("decisionType", decisionType)
-                .register(meterRegistry)
-                .increment();
-
-        List<Rule> fresh = ruleRepository.findByDecisionTypeAndEnabledTrueOrderByPriorityAsc(decisionType);
-        rulesCache.put(decisionType, new CachedRules(fresh, now));
-        return fresh;
     }
 
     private boolean matches(String condtion, DecisionContext ctx) {

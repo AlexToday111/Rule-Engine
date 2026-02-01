@@ -1,7 +1,6 @@
 package com.service.engine.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.service.engine.controllers.RulesController;
 import com.service.engine.model.Rule;
 import com.service.engine.repository.RuleRepository;
 import org.junit.jupiter.api.Test;
