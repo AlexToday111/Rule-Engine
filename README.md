@@ -36,6 +36,16 @@ Rule Engine — backend-сервис на Spring Boot для принятия р
 
 ---
 
+## Архитектура
+
+Краткие материалы по устройству сервиса:
+- `arcitechure/README.md` — оглавление
+- `arcitechure/overview.md` — обзор, границы и стек
+- `arcitechure/components.md` — основные компоненты и роли
+- `arcitechure/decision-flow.md` — поток принятия решения
+- `arcitechure/data-model.md` — модель данных и миграции
+- `arcitechure/observability.md` — метрики и эндпоинты наблюдаемости
+
 ## API
 
 Базовый префикс: `/api/v1`
@@ -106,7 +116,7 @@ Rule Engine — backend-сервис на Spring Boot для принятия р
 
 ## Хранилище правил и миграции
 
-Правила лежат в БД, миграции выполняются через Flyway (см. `src/main/resources/db/migration`):
+Правила лежат в БД, миграции выполняются через Flyway (см. `src/main/java/resources/db/migration`):
 - `V1__create_rules_table.sql`
 - `V2__seed_rules.sql`
 
@@ -134,5 +144,4 @@ mvn spring-boot:run
 ```bash
 mvn test
 ```
-
 
